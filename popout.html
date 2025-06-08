@@ -43,7 +43,18 @@
 
       const { renderer, scene, camera } = mindarThree;
       const anchor = mindarThree.addAnchor(0);
+      anchor.group.visible = false; // Hide initially
+
       const loader = new THREE.TextureLoader();
+
+      // Show/hide content based on tracking
+      anchor.onTargetFound = () => {
+        anchor.group.visible = true;
+      };
+
+      anchor.onTargetLost = () => {
+        anchor.group.visible = false;
+      };
 
       const addLayer = async (file, zPos, scale = [1, 1.4]) => {
         const tex = await loader.loadAsync(file);
@@ -54,11 +65,13 @@
         anchor.group.add(mesh);
       };
 
-      await addLayer("layers/desc.png", 0.2);
-      await addLayer("layers/name.png", 0.3);
-      await addLayer("layers/grade.png", 0.3);
-      await addLayer("layers/stats.png", 0.1);
-      await addLayer("layers/char.png", 0.35);
+      // Add background first, then pop-up layers
+      await addLayer("layers/card-bg.png", -0.1, [1.5, 2.2]);
+      await addLayer("layers/desc.png", 0.2, [1, 0.3]);
+      await addLayer("layers/name.png", 0.3, [1, 0.2]);
+      await addLayer("layers/grade.png", 0.4, [0.5, 0.5]);
+      await addLayer("layers/stats.png", 0.5, [1, 0.3]);
+      await addLayer("layers/char.png", 0.6, [1.2, 1.6]);
 
       await mindarThree.start();
 
@@ -69,8 +82,8 @@
       // Scan Again Button Logic
       const scanAgainBtn = document.getElementById("scan-again-btn");
       scanAgainBtn.addEventListener("click", async () => {
-        await mindarThree.stop();       // Stop tracking
-        await mindarThree.start();      // Restart tracking
+        await mindarThree.stop();
+        await mindarThree.start();
       });
     });
   </script>
