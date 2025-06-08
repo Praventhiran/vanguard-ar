@@ -10,34 +10,52 @@
       margin: 0;
       overflow: hidden;
       height: 100%;
-      background: #000;
+      font-family: sans-serif;
     }
     #ar-container {
       width: 100vw;
       height: 100vh;
+      position: relative;
+    }
+    #scan-again-btn {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: rgba(0, 0, 0, 0.6);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      z-index: 2;
+    }
+    #scan-again-btn:hover {
+      background-color: rgba(255, 0, 0, 0.7);
     }
   </style>
 </head>
 <body>
-  <div id="ar-container"></div>
+  <div id="ar-container">
+    <button id="scan-again-btn">Scan Again</button>
+  </div>
 
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
       const mindarThree = new window.MINDAR.IMAGE.MindARThree({
         container: document.querySelector("#ar-container"),
-        imageTargetSrc: "./targets.mind"
+        imageTargetSrc: "./targets.mind",
       });
 
       const { renderer, scene, camera } = mindarThree;
       const anchor = mindarThree.addAnchor(0);
       const loader = new THREE.TextureLoader();
-      const raycaster = new THREE.Raycaster();
-      const mouse = new THREE.Vector2();
 
       const layerGroup = new THREE.Group();
-      anchor.group.add(layerGroup);
-      const interactiveObjects = [];
+      scene.add(layerGroup); // Not parented to marker — always visible
 
+      const interactiveObjects = [];
       let currentInfoMesh = null;
 
       const createLayer = async (file, zPos, scale = [1, 1.4], infoText = "") => {
@@ -51,18 +69,21 @@
         interactiveObjects.push(mesh);
       };
 
-      // Add layers (no card background)
+      // Add card layers
       await createLayer("layers/desc.png", -0.02, [1, 0.3], "This is the card description.");
       await createLayer("layers/name.png", 0.05, [1, 0.2], "This is the name of the unit.");
       await createLayer("layers/grade.png", 0.1, [0.5, 0.5], "The grade determines power level.");
       await createLayer("layers/stats.png", 0.2, [1, 0.3], "Stats show the card's battle value.");
       await createLayer("layers/char.png", 0.35, [1.2, 1.6], "Main character illustration.");
+      await createLayer("layers/card-bg.png", -0.1, [1.5, 2.2], "");
+
+      // Show info text when tapped
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
 
       const createInfoBox = (text, position) => {
-        // Remove old info if any
         if (currentInfoMesh) {
-          anchor.group.remove(currentInfoMesh);
-          currentInfoMesh = null;
+          scene.remove(currentInfoMesh);
         }
 
         const canvas = document.createElement("canvas");
@@ -79,26 +100,23 @@
         const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
         const geo = new THREE.PlaneGeometry(0.8, 0.2);
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(position.x, position.y + 0.4, position.z); // Above the tapped layer
+        mesh.position.set(position.x, position.y + 0.4, position.z);
         currentInfoMesh = mesh;
-        anchor.group.add(mesh);
+        scene.add(mesh);
       };
 
       const onTap = (x, y) => {
         mouse.x = (x / window.innerWidth) * 2 - 1;
         mouse.y = -(y / window.innerHeight) * 2 + 1;
-
         raycaster.setFromCamera(mouse, camera);
         const intersects = raycaster.intersectObjects(interactiveObjects, false);
         if (intersects.length > 0) {
           const selected = intersects[0].object;
           const info = selected.userData.info || "No info.";
-          const pos = selected.position.clone();
-          createInfoBox(info, pos);
+          createInfoBox(info, selected.position.clone());
         }
       };
 
-      // Handle click and touch
       window.addEventListener("click", (e) => onTap(e.clientX, e.clientY));
       window.addEventListener("touchend", (e) => {
         if (e.changedTouches.length > 0) {
@@ -106,7 +124,7 @@
         }
       });
 
-      // Rotation logic
+      // Rotate layers with drag
       let isDragging = false;
       let previousX = 0;
       let rotationY = 0;
@@ -117,9 +135,7 @@
         previousX = event.touches ? event.touches[0].clientX : event.clientX;
       };
 
-      const endDrag = () => {
-        isDragging = false;
-      };
+      const endDrag = () => { isDragging = false; };
 
       const onDrag = (event) => {
         if (!isDragging) return;
@@ -127,7 +143,7 @@
         const deltaX = currentX - previousX;
         previousX = currentX;
         rotationY += deltaX * 0.005;
-        rotationY = clamp(rotationY, -0.5, 0.5); // ~±30°
+        rotationY = clamp(rotationY, -0.5, 0.5);
         layerGroup.rotation.y = rotationY;
       };
 
@@ -138,9 +154,17 @@
       window.addEventListener("touchend", endDrag);
       window.addEventListener("touchmove", onDrag);
 
+      // Start AR tracking
       await mindarThree.start();
       renderer.setAnimationLoop(() => {
         renderer.render(scene, camera);
+      });
+
+      // Scan Again Button
+      const scanAgainBtn = document.getElementById("scan-again-btn");
+      scanAgainBtn.addEventListener("click", async () => {
+        await mindarThree.stop();
+        await mindarThree.start();
       });
     });
   </script>
