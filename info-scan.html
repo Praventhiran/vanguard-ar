@@ -56,15 +56,16 @@
 
       let hasDetected = false;
 
-      mindarThree.addAnchor(0).onTargetFound = () => {
-        if (hasDetected) return;  // Only trigger once
-        hasDetected = true;
+const anchor = mindarThree.addAnchor(0);
 
-        // Show the popup div
-        document.getElementById('card-popup').style.display = 'block';
+anchor.onTargetFound = () => {
+  if (hasDetected) return;
+  hasDetected = true;
 
-        // Optional: You can disable further detection if you want
-        mindarThree.getAnchor(0).stop();
+  document.getElementById('card-popup').style.display = 'block';
+
+  // Stop tracking this anchor but keep camera running
+  anchor.stop();
 
         // Start AR scanning
       startAR();
