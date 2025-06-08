@@ -11,7 +11,7 @@
 
     #scan-again-btn {
       position: absolute;
-      bottom: 60px;
+      bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
       padding: 10px 20px;
@@ -54,10 +54,10 @@
         anchor.group.add(mesh);
       };
 
-      await addLayer("layers/desc.png", 0.2);
-      await addLayer("layers/name.png", 0.3);
-      await addLayer("layers/grade.png", 0.3);
-      await addLayer("layers/stats.png", 0.1);
+      await addLayer("layers/desc.png", -0.02);
+      await addLayer("layers/name.png", 0.05);
+      await addLayer("layers/grade.png", 0.1);
+      await addLayer("layers/stats.png", 0.2);
       await addLayer("layers/char.png", 0.35);
 
       await mindarThree.start();
