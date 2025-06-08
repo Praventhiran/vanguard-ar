@@ -30,46 +30,56 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
-      const mindarThree = new window.MINDAR.IMAGE.MindARThree({
-        container: document.querySelector("#ar-container"),
-        imageTargetSrc: "./targets.mind",
-      });
+  const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+    container: document.querySelector("#ar-container"),
+    imageTargetSrc: "./targets.mind",
+  });
 
-      const { renderer, scene, camera } = mindarThree;
-      const anchor = mindarThree.addAnchor(0);
-      anchor.group.visible = false;
+  const { renderer, scene, camera } = mindarThree;
+  const anchor = mindarThree.addAnchor(0);
 
-      const loader = new THREE.TextureLoader();
+  // Create a new group for the fixed card overlay (not attached to anchor)
+  const fixedGroup = new THREE.Group();
+  fixedGroup.visible = false; // hidden initially
+  scene.add(fixedGroup);
 
-      const addLayer = async (file, zPos, scale = [1, 1.4]) => {
-        const tex = await loader.loadAsync(file);
-        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
-        const geo = new THREE.PlaneGeometry(scale[0], scale[1]);
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.z = zPos;
-        anchor.group.add(mesh);
-      };
+  const loader = new THREE.TextureLoader();
 
-      // Load card layers (but keep them hidden until scan)
-      await addLayer("layers/desc.png", -0.02);
-      await addLayer("layers/name.png", 0.05);
-      await addLayer("layers/grade.png", 0.1);
-      await addLayer("layers/stats.png", 0.2);
-      await addLayer("layers/char.png", 0.35);
+  const addLayer = async (file, zPos, scale = [1, 1.4]) => {
+    const tex = await loader.loadAsync(file);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+    const geo = new THREE.PlaneGeometry(scale[0], scale[1]);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.z = zPos;
+    fixedGroup.add(mesh);
+  };
 
-      // Show card and stop tracking after first detection
-      anchor.onTargetFound = async () => {
-        anchor.group.visible = true;
-        document.getElementById("loading-message").style.display = "none";
-        await mindarThree.stop(); // stop tracking after one-time scan
-      };
+  await addLayer("layers/desc.png", -0.02);
+  await addLayer("layers/name.png", 0.05);
+  await addLayer("layers/grade.png", 0.1);
+  await addLayer("layers/stats.png", 0.2);
+  await addLayer("layers/char.png", 0.35);
 
-      await mindarThree.start();
+  // Position fixedGroup relative to camera so it appears on screen
+  fixedGroup.position.set(0, 0, -1);  // 1 unit in front of camera
+  fixedGroup.scale.set(0.5, 0.5, 0.5); // scale to fit screen nicely
 
-      renderer.setAnimationLoop(() => {
-        renderer.render(scene, camera);
-      });
-    });
+  // On card detection, show fixedGroup and stop tracking
+  anchor.onTargetFound = async () => {
+    fixedGroup.visible = true;
+    await mindarThree.stop();
+  };
+
+  await mindarThree.start();
+
+  renderer.setAnimationLoop(() => {
+    // Make sure fixedGroup stays fixed relative to camera
+    fixedGroup.quaternion.copy(camera.quaternion);
+    fixedGroup.position.copy(camera.position).add(new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion));
+
+    renderer.render(scene, camera);
+  });
+});
   </script>
 </body>
 </html>
