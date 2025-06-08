@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Vanguard AR - Info Scan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="libs/three.min.js"></script>
+  <script src="libs/mindar-image-three.prod.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      overflow: hidden;
+      height: 100%;
+      background: #000;
+    }
+    #ar-container {
+      width: 100vw;
+      height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="ar-container"></div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+        container: document.querySelector("#ar-container"),
+        imageTargetSrc: "./targets.mind"
+      });
+
+      const { renderer, scene, camera } = mindarThree;
+      const anchor = mindarThree.addAnchor(0);
+      const loader = new THREE.TextureLoader();
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+
+      const layerGroup = new THREE.Group();
+      anchor.group.add(layerGroup);
+      const interactiveObjects = [];
+
+      let currentInfoMesh = null;
+
+      const createLayer = async (file, zPos, scale = [1, 1.4], infoText = "") => {
+        const tex = await loader.loadAsync(file);
+        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+        const geo = new THREE.PlaneGeometry(scale[0], scale[1]);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.z = zPos;
+        mesh.userData = { info: infoText };
+        layerGroup.add(mesh);
+        interactiveObjects.push(mesh);
+      };
+
+      // Add layers (no card background)
+      await createLayer("layers/desc.png", -0.02, [1, 0.3], "This is the card description.");
+      await createLayer("layers/name.png", 0.05, [1, 0.2], "This is the name of the unit.");
+      await createLayer("layers/grade.png", 0.1, [0.5, 0.5], "The grade determines power level.");
+      await createLayer("layers/stats.png", 0.2, [1, 0.3], "Stats show the card's battle value.");
+      await createLayer("layers/char.png", 0.35, [1.2, 1.6], "Main character illustration.");
+
+      const createInfoBox = (text, position) => {
+        // Remove old info if any
+        if (currentInfoMesh) {
+          anchor.group.remove(currentInfoMesh);
+          currentInfoMesh = null;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 128;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "white";
+        ctx.font = "28px Arial";
+        ctx.fillText(text, 20, 80);
+
+        const tex = new THREE.CanvasTexture(canvas);
+        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+        const geo = new THREE.PlaneGeometry(0.8, 0.2);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(position.x, position.y + 0.4, position.z); // Above the tapped layer
+        currentInfoMesh = mesh;
+        anchor.group.add(mesh);
+      };
+
+      const onTap = (x, y) => {
+        mouse.x = (x / window.innerWidth) * 2 - 1;
+        mouse.y = -(y / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(interactiveObjects, false);
+        if (intersects.length > 0) {
+          const selected = intersects[0].object;
+          const info = selected.userData.info || "No info.";
+          const pos = selected.position.clone();
+          createInfoBox(info, pos);
+        }
+      };
+
+      // Handle click and touch
+      window.addEventListener("click", (e) => onTap(e.clientX, e.clientY));
+      window.addEventListener("touchend", (e) => {
+        if (e.changedTouches.length > 0) {
+          onTap(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+        }
+      });
+
+      // Rotation logic
+      let isDragging = false;
+      let previousX = 0;
+      let rotationY = 0;
+      const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+
+      const startDrag = (event) => {
+        isDragging = true;
+        previousX = event.touches ? event.touches[0].clientX : event.clientX;
+      };
+
+      const endDrag = () => {
+        isDragging = false;
+      };
+
+      const onDrag = (event) => {
+        if (!isDragging) return;
+        const currentX = event.touches ? event.touches[0].clientX : event.clientX;
+        const deltaX = currentX - previousX;
+        previousX = currentX;
+        rotationY += deltaX * 0.005;
+        rotationY = clamp(rotationY, -0.5, 0.5); // ~±30°
+        layerGroup.rotation.y = rotationY;
+      };
+
+      window.addEventListener("mousedown", startDrag);
+      window.addEventListener("mouseup", endDrag);
+      window.addEventListener("mousemove", onDrag);
+      window.addEventListener("touchstart", startDrag);
+      window.addEventListener("touchend", endDrag);
+      window.addEventListener("touchmove", onDrag);
+
+      await mindarThree.start();
+      renderer.setAnimationLoop(() => {
+        renderer.render(scene, camera);
+      });
+    });
+  </script>
+</body>
+</html>
