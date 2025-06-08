@@ -54,15 +54,19 @@
         await mindarThree.start();
       };
 
-      // When target is found, show the card popup and stop tracking
-      mindarThree.addAnchor(0).onTargetFound = async () => {
-        // show the popup div
-        document.getElementById('card-popup').style.display = 'block';
-        // stop tracking (optional, so it only scans once)
-        await mindarThree.stop();
-      };
+      let hasDetected = false;
 
-      // Start AR scanning
+      mindarThree.addAnchor(0).onTargetFound = () => {
+        if (hasDetected) return;  // Only trigger once
+        hasDetected = true;
+
+        // Show the popup div
+        document.getElementById('card-popup').style.display = 'block';
+
+        // Optional: You can disable further detection if you want
+        mindarThree.getAnchor(0).stop();
+
+        // Start AR scanning
       startAR();
 
       // Basic drag-rotate for the card popup
