@@ -6,12 +6,33 @@
   <script src="libs/three.min.js"></script>
   <script src="libs/mindar-image-three.prod.js"></script>
   <style>
-    html, body { margin: 0; overflow: hidden; height: 100%; }
-    #ar-container { width: 100vw; height: 100vh; }
+    html, body { margin: 0; overflow: hidden; height: 100%; font-family: sans-serif; }
+    #ar-container { width: 100vw; height: 100vh; position: relative; }
+
+    #scan-again-btn {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: rgba(0, 0, 0, 0.6);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      z-index: 2;
+    }
+
+    #scan-again-btn:hover {
+      background-color: rgba(255, 0, 0, 0.7);
+    }
   </style>
 </head>
 <body>
-  <div id="ar-container"></div>
+  <div id="ar-container">
+    <button id="scan-again-btn">Scan Again</button>
+  </div>
 
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
@@ -20,10 +41,9 @@
         imageTargetSrc: "./targets.mind",
       });
 
-      const {renderer, scene, camera} = mindarThree;
+      const { renderer, scene, camera } = mindarThree;
       const anchor = mindarThree.addAnchor(0);
       const loader = new THREE.TextureLoader();
-      let initialized = false;
 
       const addLayer = async (file, zPos, scale = [1, 1.4]) => {
         const tex = await loader.loadAsync(file);
@@ -34,21 +54,23 @@
         anchor.group.add(mesh);
       };
 
-      anchor.onTargetFound = async () => {
-        if (!initialized) {
-          initialized = true;
-
-          await addLayer("layers/desc.png", -0.02);
-          await addLayer("layers/name.png", 0.05);
-          await addLayer("layers/grade.png", 0.1);
-          await addLayer("layers/stats.png", 0.2);
-          await addLayer("layers/char.png", 0.35);
-        }
-      };
+      await addLayer("layers/desc.png", -0.02);
+      await addLayer("layers/name.png", 0.05);
+      await addLayer("layers/grade.png", 0.1);
+      await addLayer("layers/stats.png", 0.2);
+      await addLayer("layers/char.png", 0.35);
 
       await mindarThree.start();
+
       renderer.setAnimationLoop(() => {
         renderer.render(scene, camera);
+      });
+
+      // Scan Again Button Logic
+      const scanAgainBtn = document.getElementById("scan-again-btn");
+      scanAgainBtn.addEventListener("click", async () => {
+        await mindarThree.stop();       // Stop tracking
+        await mindarThree.start();      // Restart tracking
       });
     });
   </script>
