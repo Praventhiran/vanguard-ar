@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Vanguard AR</title>
+  <title>Vanguard AR - One Time Scan</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="libs/three.min.js"></script>
   <script src="libs/mindar-image-three.prod.js"></script>
@@ -9,29 +9,23 @@
     html, body { margin: 0; overflow: hidden; height: 100%; font-family: sans-serif; }
     #ar-container { width: 100vw; height: 100vh; position: relative; }
 
-    #scan-again-btn {
+    #loading-message {
       position: absolute;
-      bottom: 60px;
+      top: 20px;
       left: 50%;
       transform: translateX(-50%);
-      padding: 10px 20px;
-      font-size: 16px;
-      background-color: rgba(0, 0, 0, 0.6);
+      background: rgba(0,0,0,0.6);
       color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      z-index: 2;
-    }
-
-    #scan-again-btn:hover {
-      background-color: rgba(255, 0, 0, 0.7);
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 16px;
+      z-index: 10;
     }
   </style>
 </head>
 <body>
   <div id="ar-container">
-    <button id="scan-again-btn">Scan Again</button>
+    <div id="loading-message">Scan the card to display it!</div>
   </div>
 
   <script>
@@ -43,18 +37,9 @@
 
       const { renderer, scene, camera } = mindarThree;
       const anchor = mindarThree.addAnchor(0);
-      anchor.group.visible = false; // Hide initially
+      anchor.group.visible = false;
 
       const loader = new THREE.TextureLoader();
-
-      // Show/hide content based on tracking
-      anchor.onTargetFound = () => {
-        anchor.group.visible = true;
-      };
-
-      anchor.onTargetLost = () => {
-        anchor.group.visible = false;
-      };
 
       const addLayer = async (file, zPos, scale = [1, 1.4]) => {
         const tex = await loader.loadAsync(file);
@@ -65,25 +50,24 @@
         anchor.group.add(mesh);
       };
 
-      // Add background first, then pop-up layers
-      await addLayer("layers/card-bg.png", -0.1, [1.5, 2.2]);
-      await addLayer("layers/desc.png", 0.2, [1, 0.3]);
-      await addLayer("layers/name.png", 0.3, [1, 0.2]);
-      await addLayer("layers/grade.png", 0.4, [0.5, 0.5]);
-      await addLayer("layers/stats.png", 0.5, [1, 0.3]);
-      await addLayer("layers/char.png", 0.6, [1.2, 1.6]);
+      // Load card layers (but keep them hidden until scan)
+      await addLayer("layers/desc.png", -0.02);
+      await addLayer("layers/name.png", 0.05);
+      await addLayer("layers/grade.png", 0.1);
+      await addLayer("layers/stats.png", 0.2);
+      await addLayer("layers/char.png", 0.35);
+
+      // Show card and stop tracking after first detection
+      anchor.onTargetFound = async () => {
+        anchor.group.visible = true;
+        document.getElementById("loading-message").style.display = "none";
+        await mindarThree.stop(); // stop tracking after one-time scan
+      };
 
       await mindarThree.start();
 
       renderer.setAnimationLoop(() => {
         renderer.render(scene, camera);
-      });
-
-      // Scan Again Button Logic
-      const scanAgainBtn = document.getElementById("scan-again-btn");
-      scanAgainBtn.addEventListener("click", async () => {
-        await mindarThree.stop();
-        await mindarThree.start();
       });
     });
   </script>
