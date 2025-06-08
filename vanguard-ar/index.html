@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Vanguard AR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="libs/three.min.js"></script>
+  <script src="libs/mindar-image-three.prod.js"></script>
+  <style>
+    html, body { margin: 0; overflow: hidden; height: 100%; }
+    #ar-container { width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="ar-container"></div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+        container: document.querySelector("#ar-container"),
+        imageTargetSrc: "./targets.mind",
+      });
+
+      const {renderer, scene, camera} = mindarThree;
+      const anchor = mindarThree.addAnchor(0);
+      const loader = new THREE.TextureLoader();
+
+      const addLayer = async (file, zPos, scale = [1, 1.4]) => {
+        const tex = await loader.loadAsync(file);
+        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+        const geo = new THREE.PlaneGeometry(scale[0], scale[1]);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.z = zPos;
+        anchor.group.add(mesh);
+      };
+
+      await addLayer("layers/card-bg.png", 0.0);
+      await addLayer("layers/desc.png", -0.02);
+      await addLayer("layers/name.png", 0.05);
+      await addLayer("layers/grade.png", 0.1);
+      await addLayer("layers/stats.png", 0.2);
+      await addLayer("layers/char.png", 0.35);
+
+      await mindarThree.start();
+      renderer.setAnimationLoop(() => {
+        renderer.render(scene, camera);
+      });
+    });
+  </script>
+</body>
+</html>
