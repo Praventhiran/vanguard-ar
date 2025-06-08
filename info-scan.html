@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>Vanguard AR - Info Scan</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="libs/three.min.js"></script>
   <script src="libs/mindar-image-three.prod.js"></script>
   <style>
@@ -43,6 +44,7 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
+      // === MindAR Setup ===
       const mindarThree = new window.MINDAR.IMAGE.MindARThree({
         container: document.querySelector("#ar-container"),
         imageTargetSrc: "./targets.mind",
@@ -52,12 +54,14 @@
       const anchor = mindarThree.addAnchor(0);
       const loader = new THREE.TextureLoader();
 
+      // === Layered Group Setup ===
       const layerGroup = new THREE.Group();
-      scene.add(layerGroup); // Not parented to marker — always visible
+      scene.add(layerGroup); // Always visible, not tied to marker
 
       const interactiveObjects = [];
       let currentInfoMesh = null;
 
+      // === Helper: Create Layer with Info ===
       const createLayer = async (file, zPos, scale = [1, 1.4], infoText = "") => {
         const tex = await loader.loadAsync(file);
         const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
@@ -69,7 +73,7 @@
         interactiveObjects.push(mesh);
       };
 
-      // Add card layers
+      // === Load Layers ===
       await createLayer("layers/desc.png", -0.02, [1, 0.3], "This is the card description.");
       await createLayer("layers/name.png", 0.05, [1, 0.2], "This is the name of the unit.");
       await createLayer("layers/grade.png", 0.1, [0.5, 0.5], "The grade determines power level.");
@@ -77,14 +81,12 @@
       await createLayer("layers/char.png", 0.35, [1.2, 1.6], "Main character illustration.");
       await createLayer("layers/card-bg.png", -0.1, [1.5, 2.2], "");
 
-      // Show info text when tapped
+      // === Raycasting for Tap Info ===
       const raycaster = new THREE.Raycaster();
       const mouse = new THREE.Vector2();
 
       const createInfoBox = (text, position) => {
-        if (currentInfoMesh) {
-          scene.remove(currentInfoMesh);
-        }
+        if (currentInfoMesh) scene.remove(currentInfoMesh);
 
         const canvas = document.createElement("canvas");
         canvas.width = 512;
@@ -124,7 +126,7 @@
         }
       });
 
-      // Rotate layers with drag
+      // === Drag to Rotate ===
       let isDragging = false;
       let previousX = 0;
       let rotationY = 0;
@@ -134,9 +136,7 @@
         isDragging = true;
         previousX = event.touches ? event.touches[0].clientX : event.clientX;
       };
-
       const endDrag = () => { isDragging = false; };
-
       const onDrag = (event) => {
         if (!isDragging) return;
         const currentX = event.touches ? event.touches[0].clientX : event.clientX;
@@ -154,15 +154,14 @@
       window.addEventListener("touchend", endDrag);
       window.addEventListener("touchmove", onDrag);
 
-      // Start AR tracking
+      // === AR Start ===
       await mindarThree.start();
       renderer.setAnimationLoop(() => {
         renderer.render(scene, camera);
       });
 
-      // Scan Again Button
-      const scanAgainBtn = document.getElementById("scan-again-btn");
-      scanAgainBtn.addEventListener("click", async () => {
+      // === Scan Again Button ===
+      document.getElementById("scan-again-btn").addEventListener("click", async () => {
         await mindarThree.stop();
         await mindarThree.start();
       });
