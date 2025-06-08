@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Card AR Proposal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap');
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Orbitron', sans-serif;
+      background: url('https://en.cf-vanguard.com/wordpress/wp-content/uploads/planet_background.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 0;
+    }
+
+    .content {
+      z-index: 1;
+    }
+
+    h1 {
+      font-size: 3em;
+      margin-bottom: 10px;
+      text-shadow: 0 0 10px #00f5ff;
+    }
+
+    p {
+      font-size: 1.2em;
+      margin-bottom: 40px;
+      max-width: 600px;
+      line-height: 1.5;
+    }
+
+    .button-container {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      z-index: 2;
+    }
+
+    button {
+      padding: 15px 30px;
+      font-size: 1.2em;
+      border: none;
+      border-radius: 15px;
+      background: linear-gradient(145deg, #00f5ff, #0077ff);
+      color: white;
+      box-shadow: 0 0 10px #00f5ff;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.3s;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px #00f5ff;
+    }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 2em; }
+      p { font-size: 1em; padding: 0 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay"></div>
+  <div class="content">
+    <h1>Card AR Showcase</h1>
+    <p>This interactive AR experience is built for card fans and event partners. Scan physical Vanguard cards and bring them to life — layered, animated, and engaging for all ages.</p>
+
+    <div class="button-container">
+      <button onclick="location.href='popout.html'">🔹 Pop-out Card AR</button>
+      <button onclick="alert('Coming soon')">🔹 AR Skill Scan</button>
+      <button onclick="alert('Coming soon')">🔹 AR Story Unlock</button>
+      <button onclick="alert('Coming soon')">🔹 AR Character Model</button>
+    </div>
+  </div>
+</body>
+</html>
