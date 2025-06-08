@@ -1,23 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Vanguard AR - Info Scan</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vanguard AR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="libs/three.min.js"></script>
   <script src="libs/mindar-image-three.prod.js"></script>
   <style>
-    html, body {
-      margin: 0;
-      overflow: hidden;
-      height: 100%;
-      font-family: sans-serif;
-    }
-    #ar-container {
-      width: 100vw;
-      height: 100vh;
-      position: relative;
-    }
+    html, body { margin: 0; overflow: hidden; height: 100%; font-family: sans-serif; }
+    #ar-container { width: 100vw; height: 100vh; position: relative; }
+
     #scan-again-btn {
       position: absolute;
       bottom: 60px;
@@ -32,6 +23,7 @@
       cursor: pointer;
       z-index: 2;
     }
+
     #scan-again-btn:hover {
       background-color: rgba(255, 0, 0, 0.7);
     }
@@ -44,7 +36,6 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
-      // === MindAR Setup ===
       const mindarThree = new window.MINDAR.IMAGE.MindARThree({
         container: document.querySelector("#ar-container"),
         imageTargetSrc: "./targets.mind",
@@ -52,116 +43,45 @@
 
       const { renderer, scene, camera } = mindarThree;
       const anchor = mindarThree.addAnchor(0);
+      anchor.group.visible = false; // Hide initially
+
       const loader = new THREE.TextureLoader();
 
-      // === Layered Group Setup ===
-      const layerGroup = new THREE.Group();
-      scene.add(layerGroup); // Always visible, not tied to marker
+      // Show/hide content based on tracking
+      anchor.onTargetFound = () => {
+        anchor.group.visible = true;
+      };
 
-      const interactiveObjects = [];
-      let currentInfoMesh = null;
+      anchor.onTargetLost = () => {
+        anchor.group.visible = false;
+      };
 
-      // === Helper: Create Layer with Info ===
-      const createLayer = async (file, zPos, scale = [1, 1.4], infoText = "") => {
+      const addLayer = async (file, zPos, scale = [1, 1.4]) => {
         const tex = await loader.loadAsync(file);
         const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
         const geo = new THREE.PlaneGeometry(scale[0], scale[1]);
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.z = zPos;
-        mesh.userData = { info: infoText };
-        layerGroup.add(mesh);
-        interactiveObjects.push(mesh);
+        anchor.group.add(mesh);
       };
 
-      // === Load Layers ===
-      await createLayer("layers/desc.png", -0.02, [1, 0.3], "This is the card description.");
-      await createLayer("layers/name.png", 0.05, [1, 0.2], "This is the name of the unit.");
-      await createLayer("layers/grade.png", 0.1, [0.5, 0.5], "The grade determines power level.");
-      await createLayer("layers/stats.png", 0.2, [1, 0.3], "Stats show the card's battle value.");
-      await createLayer("layers/char.png", 0.35, [1.2, 1.6], "Main character illustration.");
-      await createLayer("layers/card-bg.png", -0.1, [1.5, 2.2], "");
+      // Add background first, then pop-up layers
+      await addLayer("layers/card-bg.png", -0.1, [1.5, 2.2]);
+      await addLayer("layers/desc.png", 0.2, [1, 0.3]);
+      await addLayer("layers/name.png", 0.3, [1, 0.2]);
+      await addLayer("layers/grade.png", 0.4, [0.5, 0.5]);
+      await addLayer("layers/stats.png", 0.5, [1, 0.3]);
+      await addLayer("layers/char.png", 0.6, [1.2, 1.6]);
 
-      // === Raycasting for Tap Info ===
-      const raycaster = new THREE.Raycaster();
-      const mouse = new THREE.Vector2();
-
-      const createInfoBox = (text, position) => {
-        if (currentInfoMesh) scene.remove(currentInfoMesh);
-
-        const canvas = document.createElement("canvas");
-        canvas.width = 512;
-        canvas.height = 128;
-        const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "white";
-        ctx.font = "28px Arial";
-        ctx.fillText(text, 20, 80);
-
-        const tex = new THREE.CanvasTexture(canvas);
-        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
-        const geo = new THREE.PlaneGeometry(0.8, 0.2);
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(position.x, position.y + 0.4, position.z);
-        currentInfoMesh = mesh;
-        scene.add(mesh);
-      };
-
-      const onTap = (x, y) => {
-        mouse.x = (x / window.innerWidth) * 2 - 1;
-        mouse.y = -(y / window.innerHeight) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(interactiveObjects, false);
-        if (intersects.length > 0) {
-          const selected = intersects[0].object;
-          const info = selected.userData.info || "No info.";
-          createInfoBox(info, selected.position.clone());
-        }
-      };
-
-      window.addEventListener("click", (e) => onTap(e.clientX, e.clientY));
-      window.addEventListener("touchend", (e) => {
-        if (e.changedTouches.length > 0) {
-          onTap(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-        }
-      });
-
-      // === Drag to Rotate ===
-      let isDragging = false;
-      let previousX = 0;
-      let rotationY = 0;
-      const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
-
-      const startDrag = (event) => {
-        isDragging = true;
-        previousX = event.touches ? event.touches[0].clientX : event.clientX;
-      };
-      const endDrag = () => { isDragging = false; };
-      const onDrag = (event) => {
-        if (!isDragging) return;
-        const currentX = event.touches ? event.touches[0].clientX : event.clientX;
-        const deltaX = currentX - previousX;
-        previousX = currentX;
-        rotationY += deltaX * 0.005;
-        rotationY = clamp(rotationY, -0.5, 0.5);
-        layerGroup.rotation.y = rotationY;
-      };
-
-      window.addEventListener("mousedown", startDrag);
-      window.addEventListener("mouseup", endDrag);
-      window.addEventListener("mousemove", onDrag);
-      window.addEventListener("touchstart", startDrag);
-      window.addEventListener("touchend", endDrag);
-      window.addEventListener("touchmove", onDrag);
-
-      // === AR Start ===
       await mindarThree.start();
+
       renderer.setAnimationLoop(() => {
         renderer.render(scene, camera);
       });
 
-      // === Scan Again Button ===
-      document.getElementById("scan-again-btn").addEventListener("click", async () => {
+      // Scan Again Button Logic
+      const scanAgainBtn = document.getElementById("scan-again-btn");
+      scanAgainBtn.addEventListener("click", async () => {
         await mindarThree.stop();
         await mindarThree.start();
       });
