@@ -63,6 +63,22 @@
       animation: fadeIn 1s forwards;
     }
 
+    /* New Vanguard logo animation */
+    .logo-animate {
+      animation: logoIntro 1.5s ease-out forwards;
+    }
+
+    @keyframes logoIntro {
+      0% {
+        transform: translate(-50%, -50%) scale(0.2);
+        opacity: 0;
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+      }
+    }
+
     #next-btn {
       position: absolute;
       bottom: 40px;
@@ -123,9 +139,15 @@
           slide.style.display = (i === index) ? "block" : "none";
           const imgs = slide.querySelectorAll("img");
           imgs.forEach(img => {
-            img.classList.remove("fade-in");
+            img.classList.remove("fade-in", "logo-animate");
             void img.offsetWidth; // force reflow
-            img.classList.add("fade-in");
+
+            // Add logo animation only to the Vanguard image on slide 1
+            if (img.id === "slide1-vanguard" && i === 0) {
+              img.classList.add("logo-animate");
+            } else {
+              img.classList.add("fade-in");
+            }
           });
         });
         nextBtn.innerText = (index >= slides.length - 1) ? "Close" : "Next";
