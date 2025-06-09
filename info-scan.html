@@ -35,11 +35,57 @@
       transform-origin: center;
       transform: translate(-50%, -50%) perspective(1000px) rotateX(0deg) rotateY(0deg);
     }
+
+    /* === New hotspot areas === */
+    .hotspot {
+      position: absolute;
+      z-index: 11;
+      background: rgba(255, 255, 255, 0); /* transparent touch area */
+    }
+    #character-zone {
+      top: 100px;
+      left: 50px;
+      width: 200px;
+      height: 200px;
+    }
+    #grade-zone {
+      top: 20px;
+      right: 20px;
+      width: 60px;
+      height: 60px;
+    }
+
+    /* Info popup */
+    #info-panel {
+      position: absolute;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 280px;
+      padding: 15px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      font-size: 14px;
+      border-radius: 10px;
+      z-index: 20;
+      display: none;
+    }
+    #info-text {
+      text-align: center;
+    }
   </style>
 </head>
 <body>
   <div id="ar-container"></div>
-  <div id="card-popup"></div>
+
+  <div id="card-popup">
+    <div id="character-zone" class="hotspot"></div>
+    <div id="grade-zone" class="hotspot"></div>
+  </div>
+
+  <div id="info-panel">
+    <div id="info-text"></div>
+  </div>
 
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
@@ -91,18 +137,38 @@
         card.style.cursor = 'grab';
       });
 
-     window.addEventListener('pointermove', (e) => {
+      window.addEventListener('pointermove', (e) => {
         if (!isDragging) return;
         const deltaX = e.clientX - lastX;
         const deltaY = e.clientY - lastY;
-      
-        rotationY += deltaX * 0.3; // horizontal drag rotates Y axis
-        rotationX -= deltaY * 0.3; // vertical drag rotates X axis
-      
+
+        rotationY += deltaX * 0.3;
+        rotationX -= deltaY * 0.3;
+
         card.style.transform = `perspective(1000px) translate(-50%, -50%) rotateX(${rotationX}deg) rotateY(${rotationY}deg)`;
-      
+
         lastX = e.clientX;
         lastY = e.clientY;
+      });
+
+      // === Info panel interaction ===
+      const infoPanel = document.getElementById('info-panel');
+      const infoText = document.getElementById('info-text');
+
+      function showInfo(text) {
+        infoText.textContent = text;
+        infoPanel.style.display = 'block';
+        setTimeout(() => {
+          infoPanel.style.display = 'none';
+        }, 3000);
+      }
+
+      document.getElementById('character-zone').addEventListener('click', () => {
+        showInfo("🧍 Character: Blazing Hero Edy\nPower: 13,000\nClan: Dragon Empire");
+      });
+
+      document.getElementById('grade-zone').addEventListener('click', () => {
+        showInfo("🏅 Grade: 3\nTwin Drive!!\nRequires Grade 2 to ride.");
       });
     });
   </script>
