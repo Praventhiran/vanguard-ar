@@ -2,100 +2,144 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Card Puzzle Match</title>
+  <title>AR Card Puzzle</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap');
+
     body {
       margin: 0;
       padding: 0;
-      background: #111;
-      color: white;
       font-family: 'Orbitron', sans-serif;
+      background: linear-gradient(to bottom, #111, #222);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100vh;
+      overflow: hidden;
+      color: white;
     }
 
-    #game-area {
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    #puzzle-area {
       position: relative;
       width: 360px;
       height: 500px;
       border: 2px solid #00f5ff;
+      border-radius: 10px;
+      overflow: hidden;
       background-color: #000;
     }
 
-    #card-frame {
+    .puzzle-piece {
       position: absolute;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-    }
-
-    #character {
-      width: 120px;
+      width: 150px;
+      touch-action: none;
       cursor: grab;
-      margin-top: 20px;
+      z-index: 10;
+      transition: transform 0.2s;
     }
 
-    #drop-zone {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 2;
-    }
-
-    #final-card {
-      display: none;
+    #final-image {
       width: 360px;
       height: 500px;
+      display: none;
       margin-top: 20px;
+      box-shadow: 0 0 20px #00f5ff;
     }
 
-    h2 {
-      margin-top: 20px;
+    @media (max-width: 400px) {
+      #puzzle-area { width: 300px; height: 420px; }
+      .puzzle-piece { width: 120px; }
+      #final-image { width: 300px; height: 420px; }
     }
   </style>
 </head>
 <body>
 
   <h2>Match the Vanguard Card</h2>
-  <div id="game-area">
-    <img id="card-frame" src="assets/card-frame.png" />
-    <div id="drop-zone"></div>
+  <div id="puzzle-area">
+    <img id="frame-piece" class="puzzle-piece" src="assets/card-frame.png" draggable="false" />
+    <img id="char-piece" class="puzzle-piece" src="assets/character.png" draggable="true" />
   </div>
 
-  <img id="character" src="assets/character.png" draggable="true" />
-
-  <img id="final-card" src="assets/final-card.png" />
+  <img id="final-image" src="assets/final-card.png" />
 
   <script>
-    const character = document.getElementById("character");
-    const dropZone = document.getElementById("drop-zone");
-    const gameArea = document.getElementById("game-area");
-    const finalCard = document.getElementById("final-card");
+    // Random position utility
+    function getRandomPosition(maxWidth, maxHeight, elementWidth, elementHeight) {
+      const x = Math.random() * (maxWidth - elementWidth);
+      const y = Math.random() * (maxHeight - elementHeight);
+      return { x, y };
+    }
 
-    // Drag events
-    character.addEventListener("dragstart", (e) => {
-      e.dataTransfer.setData("text/plain", "character");
+    const puzzleArea = document.getElementById('puzzle-area');
+    const framePiece = document.getElementById('frame-piece');
+    const charPiece = document.getElementById('char-piece');
+    const finalImage = document.getElementById('final-image');
+
+    // Set random positions for both pieces
+    function placeRandomly() {
+      const rect = puzzleArea.getBoundingClientRect();
+      const areaW = rect.width;
+      const areaH = rect.height;
+
+      const pieceW = framePiece.offsetWidth;
+      const pieceH = framePiece.offsetHeight;
+
+      const pos1 = getRandomPosition(areaW, areaH, pieceW, pieceH);
+      const pos2 = getRandomPosition(areaW, areaH, pieceW, pieceH);
+
+      framePiece.style.left = `${pos1.x}px`;
+      framePiece.style.top = `${pos1.y}px`;
+
+      charPiece.style.left = `${pos2.x}px`;
+      charPiece.style.top = `${pos2.y}px`;
+    }
+
+    placeRandomly();
+
+    // Drag logic (mobile + desktop)
+    let offsetX, offsetY, dragging = false;
+
+    charPiece.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      offsetX = e.clientX - charPiece.offsetLeft;
+      offsetY = e.clientY - charPiece.offsetTop;
+      charPiece.setPointerCapture(e.pointerId);
     });
 
-    dropZone.addEventListener("dragover", (e) => {
-      e.preventDefault();
+    charPiece.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const x = e.clientX - offsetX;
+      const y = e.clientY - offsetY;
+      charPiece.style.left = `${x}px`;
+      charPiece.style.top = `${y}px`;
     });
 
-    dropZone.addEventListener("drop", (e) => {
-      e.preventDefault();
-      const data = e.dataTransfer.getData("text");
-      if (data === "character") {
-        gameArea.style.display = "none";
-        character.style.display = "none";
-        finalCard.style.display = "block";
+    charPiece.addEventListener('pointerup', (e) => {
+      dragging = false;
+      charPiece.releasePointerCapture(e.pointerId);
+      checkMatch();
+    });
+
+    function checkMatch() {
+      const frameRect = framePiece.getBoundingClientRect();
+      const charRect = charPiece.getBoundingClientRect();
+
+      const dx = Math.abs(frameRect.left - charRect.left);
+      const dy = Math.abs(frameRect.top - charRect.top);
+
+      // Allow some tolerance
+      if (dx < 30 && dy < 30) {
+        puzzleArea.style.display = 'none';
+        finalImage.style.display = 'block';
       }
-    });
+    }
   </script>
 </body>
 </html>
