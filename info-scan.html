@@ -33,6 +33,9 @@
       display: none;
       touch-action: none;
       z-index: 10;
+      transform-style: preserve-3d;
+      transform-origin: center;
+      transform: perspective(1000px) rotateX(0deg) rotateY(0deg);
     }
   </style>
 </head>
@@ -61,6 +64,7 @@
         hasDetected = true;
 
         document.getElementById("card-popup").style.display = "block";
+        document.querySelector(".mindar-ui-overlay")?.style.display = "none";
         anchor.stop(); // Stop tracking target but keep camera
       };
 
@@ -74,26 +78,33 @@
       // Drag-rotate logic
       const card = document.getElementById('card-popup');
       let isDragging = false;
-      let lastX = 0;
-      let rotation = 0;
+      let rotationX = 0;
+      let rotationY = 0;
 
       card.addEventListener('pointerdown', (e) => {
-        isDragging = true;
-        lastX = e.clientX;
-        card.style.cursor = 'grabbing';
-      });
-
-      window.addEventListener('pointerup', () => {
-        isDragging = false;
-        card.style.cursor = 'grab';
-      });
-
-      window.addEventListener('pointermove', (e) => {
-        if (!isDragging) return;
-        const deltaX = e.clientX - lastX;
-        rotation += deltaX * 0.5;
-        card.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
-        lastX = e.clientX;
+      isDragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      card.style.cursor = 'grabbing';
+    });
+    
+    window.addEventListener('pointerup', () => {
+      isDragging = false;
+      card.style.cursor = 'grab';
+    });
+    
+    window.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      const deltaX = e.clientX - lastX;
+      const deltaY = e.clientY - lastY;
+    
+      rotationY += deltaX * 0.3; // horizontal drag rotates Y axis
+      rotationX -= deltaY * 0.3; // vertical drag rotates X axis
+    
+      card.style.transform = `perspective(1000px) translate(-50%, -50%) rotateX(${rotationX}deg) rotateY(${rotationY}deg)`;
+    
+      lastX = e.clientX;
+      lastY = e.clientY;
       });
     });
   </script>
