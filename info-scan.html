@@ -7,31 +7,32 @@
   <script src="libs/mindar-image-three.prod.js"></script>
   <style>
     html, body {
-      margin: 0; 
-      overflow: hidden; 
-      height: 100%; 
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100%;
       font-family: sans-serif;
-      background: black;
     }
     #ar-container {
-      width: 100vw; 
-      height: 100vh; 
+      width: 100vw;
+      height: 100vh;
       position: relative;
     }
     #card-popup {
       position: absolute;
-      top: 50%; 
+      top: 50%;
       left: 50%;
       width: 300px;
       height: 420px;
-      margin-left: -150px; /* half width */
-      margin-top: -210px; /* half height */
-      background-image: url('layers/card-bg.png'); /* your card background */
+      margin-left: -150px;
+      margin-top: -210px;
+      background-image: url('layers/card-bg.png');
       background-size: contain;
       background-repeat: no-repeat;
       cursor: grab;
-      display: none; /* hidden initially */
+      display: none;
       touch-action: none;
+      z-index: 10;
     }
   </style>
 </head>
@@ -41,59 +42,60 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
-  const mindarThree = new window.MINDAR.IMAGE.MindARThree({
-    container: document.querySelector("#ar-container"),
-    imageTargetSrc: "./targets.mind",
-    maxTrack: 1,
-  });
+      const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+        container: document.querySelector("#ar-container"),
+        imageTargetSrc: "./targets.mind",
+        maxTrack: 1,
+        filterMinCF: 0.0001,
+        filterBeta: 0.001
+      });
 
-  const { renderer, scene, camera } = mindarThree;
-  const anchor = mindarThree.addAnchor(0);
+      const { renderer, scene, camera } = mindarThree;
 
-  let hasDetected = false;
+      const anchor = mindarThree.addAnchor(0);
+      let hasDetected = false;
 
-  anchor.onTargetFound = () => {
-    if (hasDetected) return;
-    hasDetected = true;
+      // Show popup on first detection
+      anchor.onTargetFound = () => {
+        if (hasDetected) return;
+        hasDetected = true;
 
-    document.getElementById('card-popup').style.display = 'block';
+        document.getElementById("card-popup").style.display = "block";
+        anchor.stop(); // Stop tracking target but keep camera
+      };
 
-    // Stop tracking this anchor but keep camera running
-    anchor.stop();
-  };
+      // Start camera and tracking
+      await mindarThree.start();
 
-  await mindarThree.start();  // Start MindAR once immediately
+      renderer.setAnimationLoop(() => {
+        renderer.render(scene, camera);
+      });
 
-  renderer.setAnimationLoop(() => {
-    renderer.render(scene, camera);
-  });
+      // Drag-rotate logic
+      const card = document.getElementById('card-popup');
+      let isDragging = false;
+      let lastX = 0;
+      let rotation = 0;
 
-  // Drag-rotate logic for popup card
-  const card = document.getElementById('card-popup');
-  let isDragging = false;
-  let lastX = 0;
-  let rotation = 0;
+      card.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        lastX = e.clientX;
+        card.style.cursor = 'grabbing';
+      });
 
-  card.addEventListener('pointerdown', (e) => {
-    isDragging = true;
-    lastX = e.clientX;
-    card.style.cursor = 'grabbing';
-    e.preventDefault();
-  });
+      window.addEventListener('pointerup', () => {
+        isDragging = false;
+        card.style.cursor = 'grab';
+      });
 
-  window.addEventListener('pointerup', () => {
-    isDragging = false;
-    card.style.cursor = 'grab';
-  });
-
-  window.addEventListener('pointermove', (e) => {
-    if (!isDragging) return;
-    const deltaX = e.clientX - lastX;
-    rotation += deltaX * 0.5; // rotation speed
-    card.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
-    lastX = e.clientX;
-  });
-});
+      window.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - lastX;
+        rotation += deltaX * 0.5;
+        card.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+        lastX = e.clientX;
+      });
+    });
   </script>
 </body>
 </html>
