@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Card Puzzle Match</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: white;
+      font-family: 'Orbitron', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    #game-area {
+      position: relative;
+      width: 360px;
+      height: 500px;
+      border: 2px solid #00f5ff;
+      background-color: #000;
+    }
+
+    #card-frame {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    #character {
+      width: 120px;
+      cursor: grab;
+      margin-top: 20px;
+    }
+
+    #drop-zone {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+    }
+
+    #final-card {
+      display: none;
+      width: 360px;
+      height: 500px;
+      margin-top: 20px;
+    }
+
+    h2 {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Match the Vanguard Card</h2>
+  <div id="game-area">
+    <img id="card-frame" src="assets/card-frame.png" />
+    <div id="drop-zone"></div>
+  </div>
+
+  <img id="character" src="assets/character.png" draggable="true" />
+
+  <img id="final-card" src="assets/final-card.png" />
+
+  <script>
+    const character = document.getElementById("character");
+    const dropZone = document.getElementById("drop-zone");
+    const gameArea = document.getElementById("game-area");
+    const finalCard = document.getElementById("final-card");
+
+    // Drag events
+    character.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", "character");
+    });
+
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      const data = e.dataTransfer.getData("text");
+      if (data === "character") {
+        gameArea.style.display = "none";
+        character.style.display = "none";
+        finalCard.style.display = "block";
+      }
+    });
+  </script>
+</body>
+</html>
