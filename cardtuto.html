@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Vanguard AR Mat Tutorial</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="libs/three.min.js"></script>
+  <script src="libs/mindar-image-three.prod.js"></script>
+  <style>
+    html, body { margin: 0; overflow: hidden; height: 100%; }
+    #ar-container { width: 100vw; height: 100vh; position: relative; }
+    #ui {
+      position: absolute;
+      bottom: 20px;
+      width: 100%;
+      text-align: center;
+      color: white;
+      font-size: 1.2em;
+      font-family: sans-serif;
+      z-index: 2;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="ar-container">
+    <div id="ui">Scan your Vanguard Playmat</div>
+  </div>
+
+  <script type="module">
+    import * as THREE from './libs/three.min.js';
+    import { MindARThree } from './libs/mindar-image-three.prod.js';
+
+    const mindarThree = new MindARThree({
+      container: document.querySelector("#ar-container"),
+      imageTargetSrc: "./targets.mind",
+    });
+
+    const { renderer, scene, camera } = mindarThree;
+    const anchor = mindarThree.addAnchor(0);
+    const loader = new THREE.TextureLoader();
+
+    // 1. Load 360° room
+    const roomTexture = loader.load('./assets/room360.jpg');
+    roomTexture.mapping = THREE.EquirectangularReflectionMapping;
+    scene.background = roomTexture;
+
+    // 2. Load anchored digital mat
+    const matTexture = await loader.loadAsync("./layers/digital-mat.png");
+    const matMaterial = new THREE.MeshBasicMaterial({ map: matTexture, transparent: true });
+    const matGeometry = new THREE.PlaneGeometry(1.5, 1); // Adjust size if needed
+    const matMesh = new THREE.Mesh(matGeometry, matMaterial);
+    matMesh.rotation.x = -Math.PI / 2; // Lay flat
+    matMesh.position.set(0, 0, 0);     // Centered on image target
+    anchor.group.add(matMesh);
+
+    // 3. Tutorial overlay (optional text image layer)
+    const tutorialTex = await loader.loadAsync("./layers/tutorial-texts.png");
+    const tutorialMat = new THREE.MeshBasicMaterial({ map: tutorialTex, transparent: true });
+    const tutorialGeo = new THREE.PlaneGeometry(1.2, 0.4);
+    const tutorialMesh = new THREE.Mesh(tutorialGeo, tutorialMat);
+    tutorialMesh.position.set(0, 0.05, 0); // Slightly above mat
+    tutorialMesh.rotation.x = -Math.PI / 2;
+    anchor.group.add(tutorialMesh);
+
+    // 4. Start AR and animate
+    await mindarThree.start();
+    renderer.setAnimationLoop(() => {
+      renderer.render(scene, camera);
+    });
+
+    // 5. Tutorial Sequence
+    const ui = document.getElementById("ui");
+    anchor.onTargetFound = () => {
+      let steps = ["Stand up your Vanguard!", "Draw a card", "Ride!", "Call Units", "Battle!", "End Turn"];
+      let i = 0;
+      const interval = setInterval(() => {
+        ui.innerText = steps[i];
+        i++;
+        if (i >= steps.length) clearInterval(interval);
+      }, 3500);
+    };
+
+    anchor.onTargetLost = () => {
+      ui.innerText = "Scan your Vanguard Playmat";
+    };
+  </script>
+</body>
+</html>
