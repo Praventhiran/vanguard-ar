@@ -20,16 +20,6 @@
       -webkit-user-select: none;
       user-select: none;
     }
-    #rotation-area {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 400px;      /* Increased hit area */
-      height: 550px;     /* Increased hit area */
-      transform: translate(-50%, -50%);
-      cursor: grab;
-      z-index: 14;       /* just under the character overlay */
-    }
     #character-overlay {
       position: absolute;
       top: 50%;
@@ -39,10 +29,10 @@
       cursor: grab;
       transform-style: preserve-3d;
       transform-origin: center;
-      transform: translate(-50%, -50%) rotateX(0deg) rotateY(0deg);
+      transform: translate(-50%, -50%);
       display: none;
       z-index: 15;
-      pointer-events: none; /* pointer events disabled here since rotation-area handles input */
+      pointer-events: auto; /* enable pointer for dragging */
     }
     #photo-frame {
       position: absolute;
@@ -70,10 +60,7 @@
 <body>
   <div id="ar-container"></div>
 
-  <!-- Invisible bigger hit area for drag-rotate -->
-  <div id="rotation-area"></div>
-
-  <!-- The character image overlay you can drag/rotate -->
+  <!-- The character image overlay you can drag/move -->
   <img id="character-overlay" src="layers/char.png" alt="Character" />
 
   <!-- Border frame -->
@@ -97,7 +84,6 @@
       const characterOverlay = document.getElementById("character-overlay");
       const photoFrame = document.getElementById("photo-frame");
       const takePhotoBtn = document.getElementById("take-photo");
-      const rotationArea = document.getElementById("rotation-area");
 
       let hasDetected = false;
 
@@ -108,7 +94,6 @@
         characterOverlay.style.display = "block";
         photoFrame.style.display = "block";
         takePhotoBtn.style.display = "block";
-        rotationArea.style.display = "block";
 
         document.querySelector(".mindar-ui-overlay")?.remove();
         anchor.stop(); // Stop tracking but keep camera running
@@ -124,39 +109,62 @@
         renderer.render(scene, camera);
       });
 
-      // Drag-rotate logic for rotationArea (bigger hitbox)
+      // Drag-move logic for character overlay
       let isDragging = false;
-      let rotationX = 0;
-      let rotationY = 0;
-      let lastX = 0;
-      let lastY = 0;
+      let startX = 0;
+      let startY = 0;
+      let currentLeft = 0;
+      let currentTop = 0;
 
-      rotationArea.addEventListener('pointerdown', (e) => {
+      characterOverlay.addEventListener('pointerdown', (e) => {
         isDragging = true;
-        lastX = e.clientX;
-        lastY = e.clientY;
-        rotationArea.style.cursor = 'grabbing';
+        startX = e.clientX;
+        startY = e.clientY;
+
+        // Get current left and top in px (from computed style)
+        const style = window.getComputedStyle(characterOverlay);
+        currentLeft = parseFloat(style.left);
+        currentTop = parseFloat(style.top);
+
         characterOverlay.style.cursor = 'grabbing';
+
+        // Capture pointer to continue receiving events outside element
+        characterOverlay.setPointerCapture(e.pointerId);
       });
 
-      window.addEventListener('pointerup', () => {
-        isDragging = false;
-        rotationArea.style.cursor = 'grab';
-        characterOverlay.style.cursor = 'grab';
-      });
-
-      window.addEventListener('pointermove', (e) => {
+      characterOverlay.addEventListener('pointermove', (e) => {
         if (!isDragging) return;
-        const deltaX = e.clientX - lastX;
-        const deltaY = e.clientY - lastY;
 
-        rotationY += deltaX * 0.3;
-        rotationX -= deltaY * 0.3;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
 
-        characterOverlay.style.transform = `translate(-50%, -50%) perspective(1000px) rotateX(${rotationX}deg) rotateY(${rotationY}deg)`;
+        // Update position by adding delta, keep it within viewport
+        let newLeft = currentLeft + dx;
+        let newTop = currentTop + dy;
 
-        lastX = e.clientX;
-        lastY = e.clientY;
+        // Optional: clamp to viewport bounds
+        const halfWidth = characterOverlay.offsetWidth / 2;
+        const halfHeight = characterOverlay.offsetHeight / 2;
+
+        newLeft = Math.min(window.innerWidth - halfWidth, Math.max(halfWidth, newLeft));
+        newTop = Math.min(window.innerHeight - halfHeight, Math.max(halfHeight, newTop));
+
+        characterOverlay.style.left = `${newLeft}px`;
+        characterOverlay.style.top = `${newTop}px`;
+        // Remove translate(-50%, -50%) because we're positioning absolutely by left/top now
+        characterOverlay.style.transform = `translate(0, 0)`;
+      });
+
+      characterOverlay.addEventListener('pointerup', (e) => {
+        isDragging = false;
+        characterOverlay.style.cursor = 'grab';
+        characterOverlay.releasePointerCapture(e.pointerId);
+      });
+
+      characterOverlay.addEventListener('pointercancel', (e) => {
+        isDragging = false;
+        characterOverlay.style.cursor = 'grab';
+        characterOverlay.releasePointerCapture(e.pointerId);
       });
 
       // Take photo button functionality
@@ -173,17 +181,7 @@
         const charRect = characterOverlay.getBoundingClientRect();
         const frameRect = photoFrame.getBoundingClientRect();
 
-        // Draw character overlay
-        context.save();
-        // Calculate position relative to canvas
-        const scaleX = canvas.width / window.innerWidth;
-        const scaleY = canvas.height / window.innerHeight;
-        context.translate(charRect.left * scaleX + charRect.width * scaleX / 2, charRect.top * scaleY + charRect.height * scaleY / 2);
-
-        // IMPORTANT: Remove rotateY transform here to keep the position consistent during photo
-        // We only draw the character overlay as-is without rotation to prevent shifting
-        context.drawImage(characterOverlay, -charRect.width * scaleX / 2, -charRect.height * scaleY / 2, charRect.width * scaleX, charRect.height * scaleY);
-        context.restore();
+        context.drawImage(characterOverlay, charRect.left, charRect.top, charRect.width, charRect.height);
 
         // Draw frame overlay
         context.drawImage(photoFrame, 0, 0, canvas.width, canvas.height);
