@@ -62,7 +62,7 @@
         hasDetected = true;
 
         document.getElementById("card-popup").style.display = "block";
-        document.querySelector("#ar-container canvas")?.style.display = "none";
+        document.querySelector(".mindar-ui-overlay")?.remove();
         anchor.stop(); // Stop tracking target but keep camera
       };
 
