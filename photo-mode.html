@@ -109,58 +109,66 @@
         renderer.render(scene, camera);
       });
 
-      // Drag-move logic for character overlay
       let isDragging = false;
       let startX = 0;
       let startY = 0;
       let currentLeft = 0;
       let currentTop = 0;
-
+      
       characterOverlay.addEventListener('pointerdown', (e) => {
         isDragging = true;
         startX = e.clientX;
         startY = e.clientY;
-
-        // Get current left and top in px (from computed style)
+      
         const style = window.getComputedStyle(characterOverlay);
-        currentLeft = parseFloat(style.left);
-        currentTop = parseFloat(style.top);
-
+        const leftStr = style.left;
+        const topStr = style.top;
+      
+        if (leftStr.includes('%') || topStr.includes('%')) {
+          currentLeft = (parseFloat(leftStr) / 100) * window.innerWidth;
+          currentTop = (parseFloat(topStr) / 100) * window.innerHeight;
+      
+          currentLeft -= characterOverlay.offsetWidth / 2;
+          currentTop -= characterOverlay.offsetHeight / 2;
+      
+          characterOverlay.style.left = `${currentLeft}px`;
+          characterOverlay.style.top = `${currentTop}px`;
+          characterOverlay.style.transform = `translate(0, 0)`;
+        } else {
+          currentLeft = parseFloat(leftStr);
+          currentTop = parseFloat(topStr);
+        }
+      
         characterOverlay.style.cursor = 'grabbing';
-
-        // Capture pointer to continue receiving events outside element
         characterOverlay.setPointerCapture(e.pointerId);
       });
-
+      
       characterOverlay.addEventListener('pointermove', (e) => {
         if (!isDragging) return;
-
+      
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
-
-        // Update position by adding delta, keep it within viewport
+      
         let newLeft = currentLeft + dx;
         let newTop = currentTop + dy;
-
-        // Optional: clamp to viewport bounds
+      
+        // Optional clamp inside viewport
         const halfWidth = characterOverlay.offsetWidth / 2;
         const halfHeight = characterOverlay.offsetHeight / 2;
-
-        newLeft = Math.min(window.innerWidth - halfWidth, Math.max(halfWidth, newLeft));
-        newTop = Math.min(window.innerHeight - halfHeight, Math.max(halfHeight, newTop));
-
+      
+        newLeft = Math.min(window.innerWidth - halfWidth, Math.max(0, newLeft));
+        newTop = Math.min(window.innerHeight - halfHeight, Math.max(0, newTop));
+      
         characterOverlay.style.left = `${newLeft}px`;
         characterOverlay.style.top = `${newTop}px`;
-        // Remove translate(-50%, -50%) because we're positioning absolutely by left/top now
-        characterOverlay.style.transform = `translate(0, 0)`;
       });
-
+      
       characterOverlay.addEventListener('pointerup', (e) => {
         isDragging = false;
         characterOverlay.style.cursor = 'grab';
         characterOverlay.releasePointerCapture(e.pointerId);
       });
-
+      
       characterOverlay.addEventListener('pointercancel', (e) => {
         isDragging = false;
         characterOverlay.style.cursor = 'grab';
