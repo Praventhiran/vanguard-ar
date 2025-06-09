@@ -20,6 +20,16 @@
       -webkit-user-select: none;
       user-select: none;
     }
+    #rotation-area {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 400px;      /* Increased hit area */
+      height: 550px;     /* Increased hit area */
+      transform: translate(-50%, -50%);
+      cursor: grab;
+      z-index: 14;       /* just under the character overlay */
+    }
     #character-overlay {
       position: absolute;
       top: 50%;
@@ -32,7 +42,7 @@
       transform: translate(-50%, -50%) rotateX(0deg) rotateY(0deg);
       display: none;
       z-index: 15;
-      pointer-events: auto;
+      pointer-events: none; /* pointer events disabled here since rotation-area handles input */
     }
     #photo-frame {
       position: absolute;
@@ -60,9 +70,11 @@
 <body>
   <div id="ar-container"></div>
 
+  <!-- Invisible bigger hit area for drag-rotate -->
+  <div id="rotation-area"></div>
+
   <!-- The character image overlay you can drag/rotate -->
   <img id="character-overlay" src="layers/char.png" alt="Character" />
-
 
   <!-- Border frame -->
   <img id="photo-frame" src="overlays/photo-frame.png" alt="Photo Frame" />
@@ -85,6 +97,7 @@
       const characterOverlay = document.getElementById("character-overlay");
       const photoFrame = document.getElementById("photo-frame");
       const takePhotoBtn = document.getElementById("take-photo");
+      const rotationArea = document.getElementById("rotation-area");
 
       let hasDetected = false;
 
@@ -95,6 +108,7 @@
         characterOverlay.style.display = "block";
         photoFrame.style.display = "block";
         takePhotoBtn.style.display = "block";
+        rotationArea.style.display = "block";
 
         document.querySelector(".mindar-ui-overlay")?.remove();
         anchor.stop(); // Stop tracking but keep camera running
@@ -110,22 +124,24 @@
         renderer.render(scene, camera);
       });
 
-      // Drag-rotate logic for character overlay
+      // Drag-rotate logic for rotationArea (bigger hitbox)
       let isDragging = false;
       let rotationX = 0;
       let rotationY = 0;
       let lastX = 0;
       let lastY = 0;
 
-      characterOverlay.addEventListener('pointerdown', (e) => {
+      rotationArea.addEventListener('pointerdown', (e) => {
         isDragging = true;
         lastX = e.clientX;
         lastY = e.clientY;
+        rotationArea.style.cursor = 'grabbing';
         characterOverlay.style.cursor = 'grabbing';
       });
 
       window.addEventListener('pointerup', () => {
         isDragging = false;
+        rotationArea.style.cursor = 'grab';
         characterOverlay.style.cursor = 'grab';
       });
 
@@ -163,8 +179,9 @@
         const scaleX = canvas.width / window.innerWidth;
         const scaleY = canvas.height / window.innerHeight;
         context.translate(charRect.left * scaleX + charRect.width * scaleX / 2, charRect.top * scaleY + charRect.height * scaleY / 2);
-        context.rotate((rotationY * Math.PI) / 180);
-        // We won’t do full 3D transform on canvas (only 2D rotate Y approx)
+
+        // IMPORTANT: Remove rotateY transform here to keep the position consistent during photo
+        // We only draw the character overlay as-is without rotation to prevent shifting
         context.drawImage(characterOverlay, -charRect.width * scaleX / 2, -charRect.height * scaleY / 2, charRect.width * scaleX, charRect.height * scaleY);
         context.restore();
 
