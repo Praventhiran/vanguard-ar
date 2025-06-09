@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AR Character Photo Mode</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="libs/three.min.js"></script>
+  <script src="libs/mindar-image-three.prod.js"></script>
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      overflow: hidden;
+      height: 100%;
+      font-family: sans-serif;
+    }
+    #ar-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    #character-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 300px;
+      height: 450px;
+      cursor: grab;
+      transform-style: preserve-3d;
+      transform-origin: center;
+      transform: translate(-50%, -50%) rotateX(0deg) rotateY(0deg);
+      display: none;
+      z-index: 15;
+      pointer-events: auto;
+    }
+    #photo-frame {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 20;
+      display: none;
+    }
+    #take-photo {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 25;
+      padding: 10px 20px;
+      font-size: 16px;
+      display: none;
+    }
+    #screenshot-canvas {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="ar-container"></div>
+
+  <!-- The character image overlay you can drag/rotate -->
+  <img id="character-overlay" src="characters/character.png" alt="Character" />
+
+  <!-- Border frame -->
+  <img id="photo-frame" src="overlays/photo-frame.png" alt="Photo Frame" />
+
+  <button id="take-photo">📸 Take Photo</button>
+
+  <canvas id="screenshot-canvas"></canvas>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+        container: document.querySelector("#ar-container"),
+        imageTargetSrc: "./targets.mind",
+        maxTrack: 1
+      });
+
+      const { renderer, scene, camera } = mindarThree;
+      const anchor = mindarThree.addAnchor(0);
+
+      const characterOverlay = document.getElementById("character-overlay");
+      const photoFrame = document.getElementById("photo-frame");
+      const takePhotoBtn = document.getElementById("take-photo");
+
+      let hasDetected = false;
+
+      anchor.onTargetFound = () => {
+        if (hasDetected) return;
+        hasDetected = true;
+
+        characterOverlay.style.display = "block";
+        photoFrame.style.display = "block";
+        takePhotoBtn.style.display = "block";
+
+        document.querySelector(".mindar-ui-overlay")?.remove();
+        anchor.stop(); // Stop tracking but keep camera running
+      };
+
+      anchor.onTargetLost = () => {
+        // Optional: hide overlays if you want to handle target lost
+      };
+
+      await mindarThree.start();
+
+      renderer.setAnimationLoop(() => {
+        renderer.render(scene, camera);
+      });
+
+      // Drag-rotate logic for character overlay
+      let isDragging = false;
+      let rotationX = 0;
+      let rotationY = 0;
+      let lastX = 0;
+      let lastY = 0;
+
+      characterOverlay.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        characterOverlay.style.cursor = 'grabbing';
+      });
+
+      window.addEventListener('pointerup', () => {
+        isDragging = false;
+        characterOverlay.style.cursor = 'grab';
+      });
+
+      window.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - lastX;
+        const deltaY = e.clientY - lastY;
+
+        rotationY += deltaX * 0.3;
+        rotationX -= deltaY * 0.3;
+
+        characterOverlay.style.transform = `translate(-50%, -50%) perspective(1000px) rotateX(${rotationX}deg) rotateY(${rotationY}deg)`;
+
+        lastX = e.clientX;
+        lastY = e.clientY;
+      });
+
+      // Take photo button functionality
+      takePhotoBtn.addEventListener("click", () => {
+        const canvas = document.getElementById("screenshot-canvas");
+        canvas.width = renderer.domElement.width;
+        canvas.height = renderer.domElement.height;
+
+        const context = canvas.getContext("2d");
+        // Draw MindAR video canvas (the camera + AR rendering)
+        context.drawImage(renderer.domElement, 0, 0);
+
+        // Draw overlays on top of that
+        const charRect = characterOverlay.getBoundingClientRect();
+        const frameRect = photoFrame.getBoundingClientRect();
+
+        // Draw character overlay
+        context.save();
+        // Calculate position relative to canvas
+        const scaleX = canvas.width / window.innerWidth;
+        const scaleY = canvas.height / window.innerHeight;
+        context.translate(charRect.left * scaleX + charRect.width * scaleX / 2, charRect.top * scaleY + charRect.height * scaleY / 2);
+        context.rotate((rotationY * Math.PI) / 180);
+        // We won’t do full 3D transform on canvas (only 2D rotate Y approx)
+        context.drawImage(characterOverlay, -charRect.width * scaleX / 2, -charRect.height * scaleY / 2, charRect.width * scaleX, charRect.height * scaleY);
+        context.restore();
+
+        // Draw frame overlay
+        context.drawImage(photoFrame, 0, 0, canvas.width, canvas.height);
+
+        // Save image
+        const link = document.createElement("a");
+        link.download = "ar-character-photo.png";
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      });
+    });
+  </script>
+</body>
+</html>
